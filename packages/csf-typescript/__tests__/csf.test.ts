@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   CSF_VERSION,
   serializeSession,
@@ -11,6 +14,9 @@ import {
   type Message,
   type CSFSessionData,
 } from '../src/index.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const FIXTURE_PATH = join(__dirname, '../../..', 'test-fixtures', 'opencode-sample.csf.jsonl');
 
 // ─── Test Fixtures ──────────────────────────────────────────────
 
@@ -263,5 +269,71 @@ describe('CSF Record Validation', () => {
     const result = validateRecord(record);
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toContain('newer than supported');
+  });
+});
+
+describe('CSF Test Fixture (opencode-sample.csf.jsonl)', () => {
+  it('fixture file exists and is valid CSF JSONL', () => {
+    const jsonl = readFileSync(FIXTURE_PATH, 'utf-8');
+    expect(jsonl.length).toBeGreaterThan(0);
+
+    const data = deserializeSession(jsonl);
+    expect(data.session.id).toBe('ses_fixture_001');
+    expect(data.session.source).toBe('opencode');
+    expect(data.session.status).toBe('completed');
+    expect(data.session.metrics?.messageCount).toBe(5);
+    expect(data.messages).toHaveLength(7);
+  });
+
+  it('fixture session validates', () => {
+    const jsonl = readFileSync(FIXTURE_PATH, 'utf-8');
+    const data = deserializeSession(jsonl);
+    const result = validateSession(data.session);
+    expect(result.valid).toBe(true);
+  });
+
+  it('fixture messages validate', () => {
+    const jsonl = readFileSync(FIXTURE_PATH, 'utf-8');
+    const data = deserializeSession(jsonl);
+    for (const msg of data.messages) {
+      const result = validateMessage(msg);
+      expect(result.valid).toBe(true);
+    }
+  });
+
+  it('fixture has reasoning with reasoningType', () => {
+    const jsonl = readFileSync(FIXTURE_PATH, 'utf-8');
+    const data = deserializeSession(jsonl);
+    const reasoningMsg = data.messages.find(m =>
+      m.content.some(c => c.type === 'reasoning')
+    );
+    expect(reasoningMsg).toBeDefined();
+    const reasoning = reasoningMsg!.content.find(c => c.type === 'reasoning');
+    expect(reasoning).toBeDefined();
+    if (reasoning?.type === 'reasoning') {
+      expect(reasoning.reasoningType).toBe('planning');
+    }
+  });
+
+  it('fixture has tool_use and tool_result pairs', () => {
+    const jsonl = readFileSync(FIXTURE_PATH, 'utf-8');
+    const data = deserializeSession(jsonl);
+    const toolUses = data.messages.filter(m =>
+      m.content.some(c => c.type === 'tool_use')
+    );
+    const toolResults = data.messages.filter(m =>
+      m.content.some(c => c.type === 'tool_result')
+    );
+    expect(toolUses).toHaveLength(2);
+    expect(toolResults).toHaveLength(2);
+  });
+
+  it('fixture round-trips through serialize → deserialize', () => {
+    const original = readFileSync(FIXTURE_PATH, 'utf-8');
+    const data = deserializeSession(original);
+    const reserialized = serializeSession(data);
+    const restored = deserializeSession(reserialized);
+    expect(restored.session.id).toBe(data.session.id);
+    expect(restored.messages).toHaveLength(data.messages.length);
   });
 });
