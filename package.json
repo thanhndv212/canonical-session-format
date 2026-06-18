@@ -1,0 +1,20 @@
+{
+  "name": "canonical-session-format",
+  "version": "0.1.0",
+  "description": "Canonical Session Format (CSF) — lean JSONL format for AI coding sessions",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^22.0.0"
+  },
+  "dependencies": {
+    "@sanity-labs/secret-scan": "^1.0.0"
+  }
+}
