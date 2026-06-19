@@ -15,7 +15,7 @@ import os from 'node:os';
 
 const args = process.argv.slice(2);
 let limit: number | undefined;
-let outputDir = path.join(os.homedir(), 'copilot-trace-data', 'traces');
+let outputDir = path.join(os.homedir(), 'session-trace-data', 'traces');
 let dbPath: string | undefined;
 
 for (let i = 0; i < args.length; i++) {

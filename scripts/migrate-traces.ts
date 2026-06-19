@@ -1,7 +1,7 @@
 /**
  * Migrate NormalizedSession .json files to CSF .jsonl format.
  *
- * Reads all .json files from ~/copilot-trace-data/traces/<machineId>/<source>/
+ * Reads all .json files from ~/session-trace-data/traces/<machineId>/<source>/
  * Maps to CSF Session + Messages, runs redaction, writes <source>-<id>.csf.jsonl.
  *
  * Usage: npx tsx scripts/migrate-traces.ts
@@ -226,7 +226,7 @@ interface MigrationCounts {
 }
 
 async function main(): Promise<void> {
-  const traceDir = path.resolve(process.env.HOME || '~', 'copilot-trace-data', 'traces');
+  const traceDir = path.resolve(process.env.HOME || '~', 'session-trace-data', 'traces');
 
   if (!fs.existsSync(traceDir)) {
     console.error(`Trace directory not found: ${traceDir}`);

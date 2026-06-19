@@ -2,7 +2,7 @@
  * CSF Adapter Template
  *
  * Template for building source adapters that emit CSF (Canonical Session Format).
- * Evolves the existing copilotchat-look-up SourceAdapter pattern to produce CSF.
+ * Evolves the existing session-look-up SourceAdapter pattern to produce CSF.
  *
  * Each adapter:
  * 1. Implements CSFSourceAdapter (sync, like existing SourceAdapter)
@@ -33,7 +33,7 @@ import {
 
 /**
  * Session reference — lightweight metadata for listing available sessions.
- * Evolved from copilotchat-look-up's SessionRef to include machineId.
+ * Evolved from session-look-up's SessionRef to include machineId.
  */
 export interface CSFSessionRef {
   source: HarnessSource;
@@ -46,7 +46,7 @@ export interface CSFSessionRef {
 /**
  * CSF Source Adapter — reads from a harness tool and produces CSF.
  *
- * This is the sync interface (matching copilotchat-look-up's existing pattern).
+ * This is the sync interface (matching session-look-up's existing pattern).
  * Each adapter reads from one source and maps to CSF types.
  */
 export interface CSFSourceAdapter {

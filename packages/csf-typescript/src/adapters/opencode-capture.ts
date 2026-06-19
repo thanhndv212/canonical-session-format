@@ -324,9 +324,9 @@ let cachedMachineId: string | null = null;
 function getMachineId(): string {
   if (cachedMachineId) return cachedMachineId;
 
-  // Try to read from copilot-trace-data machines.json
+  // Try to read from session-trace-data machines.json
   try {
-    const machinesPath = path.join(os.homedir(), 'copilot-trace-data', 'machines.json');
+    const machinesPath = path.join(os.homedir(), 'session-trace-data', 'machines.json');
     const machines = JSON.parse(readFileSync(machinesPath, 'utf-8'));
     // Find the machine matching this hostname
     const hostname = os.hostname();
