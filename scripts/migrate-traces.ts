@@ -1,10 +1,17 @@
 /**
  * Migrate NormalizedSession .json files to CSF .jsonl format.
  *
- * Reads all .json files from ~/session-trace-data/traces/<machineId>/<source>/
+ * Reads all .json files from ~/Develop/session-trace-data/traces/<machineId>/<source>/
  * Maps to CSF Session + Messages, runs redaction, writes <source>-<id>.csf.jsonl.
  *
- * Usage: npx tsx scripts/migrate-traces.ts
+ * Incremental by default: only processes .json files modified since the last
+ * run (tracked in .migrate-state.json). On the very first run, seeds the
+ * high-water mark to "now" and processes nothing, so a pre-existing backlog
+ * isn't silently migrated (and thus made eligible for LLM distillation) the
+ * first time this runs after a period of not running. Pass --backfill to
+ * process everything regardless of the high-water mark.
+ *
+ * Usage: npx tsx scripts/migrate-traces.ts [--backfill]
  */
 
 import fs from 'node:fs';
@@ -225,13 +232,43 @@ interface MigrationCounts {
   redacted: number;
 }
 
+interface MigrateState {
+  highWaterMarkMs: number;
+}
+
+const STATE_FILE = path.resolve(import.meta.dirname, '..', '.migrate-state.json');
+
+function loadState(): MigrateState | null {
+  try {
+    return JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+function saveState(state: MigrateState): void {
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+}
+
 async function main(): Promise<void> {
-  const traceDir = path.resolve(process.env.HOME || '~', 'session-trace-data', 'traces');
+  const backfill = process.argv.includes('--backfill');
+  const runStartedAt = Date.now();
+  const traceDir = path.resolve(process.env.HOME || '~', 'Develop', 'session-trace-data', 'traces');
 
   if (!fs.existsSync(traceDir)) {
     console.error(`Trace directory not found: ${traceDir}`);
     process.exit(1);
   }
+
+  const state = loadState();
+  if (state === null && !backfill) {
+    saveState({ highWaterMarkMs: runStartedAt });
+    console.log(`First run: seeding high-water mark at ${new Date(runStartedAt).toISOString()}.`);
+    console.log('Pre-existing .json files were NOT migrated (avoids surfacing a backlog for distillation).');
+    console.log('Run with --backfill to migrate everything, including files older than this baseline.');
+    return;
+  }
+  const highWaterMarkMs = backfill ? 0 : (state?.highWaterMarkMs ?? 0);
 
   const counts: MigrationCounts = { total: 0, migrated: 0, skipped: 0, redacted: 0 };
 
@@ -255,11 +292,12 @@ async function main(): Promise<void> {
     for (const source of sourceDirs) {
       const sourcePath = path.join(machinePath, source);
 
-      // Discover all .json files
+      // Discover .json files modified since the high-water mark (or all, with --backfill)
       let jsonFiles: string[];
       try {
         jsonFiles = fs.readdirSync(sourcePath)
-          .filter((f) => f.endsWith('.json'));
+          .filter((f) => f.endsWith('.json'))
+          .filter((f) => fs.statSync(path.join(sourcePath, f)).mtimeMs > highWaterMarkMs);
       } catch (err) {
         console.warn(`Warning: Cannot read directory ${sourcePath}:`, err);
         continue;
@@ -324,6 +362,8 @@ async function main(): Promise<void> {
     console.log(`Skipped ${counts.skipped} files due to errors`);
   }
   console.log(`Total files processed: ${counts.total}`);
+
+  saveState({ highWaterMarkMs: runStartedAt });
 }
 
 main().catch((err) => {

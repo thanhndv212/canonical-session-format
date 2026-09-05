@@ -1,3 +1,4 @@
 canonical-session-format
 node_modules/
 dist/
+.migrate-state.json
